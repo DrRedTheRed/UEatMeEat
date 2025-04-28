@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>像素对战小游戏</title>
+    <style>
+        body { font-family: monospace; background: #222; color: #eee; text-align: center; }
+        button { margin: 5px; padding: 10px; font-size: 20px; }
+        #log { margin-top: 20px; white-space: pre-wrap; }
+        #playerInfo { margin-top: 20px; font-size: 18px; }
+        #playerInfo div { margin: 5px; }
+    </style>
+</head>
+<body>
+
+    <h1>🍽️ 你吃我吃 🍽️</h1>
+
+    <div id="buttons">
+        <button onclick="sendMove('我')">出 我</button>
+        <button onclick="sendMove('你')">出 你</button>
+        <button onclick="sendMove('💩')">出 屎</button>
+        <button onclick="sendMove('🍔')">出 汉堡</button>
+    </div>
+
+    <div id="playerInfo">
+        <div id="yourName">你的名字：-</div>
+        <div id="enemyName">对手名字：-</div>
+    </div>    
+
+    <div id="log"></div>
+
+    <script>
+        let playerName = '';
+        let ws = new WebSocket('ws://localhost:8080'); // 记得换成你服务器地址！
+
+        window.onload = () => {
+            playerName = prompt('请输入你的名字：');
+            if (!playerName) {
+                playerName = '玩家' + Math.floor(Math.random() * 1000); // 如果没填名字，给个默认
+            }
+
+            startGame();
+        };
+
+        function startGame() {
+            log(`👋 欢迎 ${playerName}！`);
+            log('⚔️ 准备开始对战！');
+
+            ws.onopen = () => {
+                log('✅ 连接成功！准备出招～');
+                document.getElementById('yourName').textContent = `你的名字：${playerName}`;
+                ws.send(JSON.stringify({ type: 'setName', name: playerName }));
+            };
+
+            ws.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+
+                // 更新玩家和对手名字
+                document.getElementById('yourName').textContent = `你的名字：${data.yourName}`;
+                document.getElementById('enemyName').textContent = `对手名字：${data.enemyName}`;
+
+                log(`玩家${data.yourName}出招：${data.yourMove} 玩家${data.enemyName}出招：${data.enemyMove}`);
+                log(`❤️ 当前血量\n玩家1: ${data.yourHP}\n玩家2: ${data.enemyHP}`);
+
+                if (data.winner) {
+                    log(`🏆 胜利者：${data.winner}`);
+                }
+                if (data.loser) {
+                    log(`💀 输了：${data.loser}`);
+                }
+
+                if (data.winner || data.loser) {
+                // 游戏结束了，不解锁按钮
+                    return;
+                }
+
+                // 如果游戏没结束，重新启用按钮
+                const buttons = document.querySelectorAll('#buttons button');
+                buttons.forEach(btn => btn.disabled = false);
+
+            };
+
+            ws.onclose = () => {
+                log('❌ 连接断开了');
+            };
+
+        }
+        
+
+        function sendMove(action) {
+            if (!ws || ws.readyState !== WebSocket.OPEN) {
+                log('❌ 连接未打开，无法发送出招！');
+                return;
+            } else {
+                // 禁用所有按钮
+                const buttons = document.querySelectorAll('#buttons button');
+                buttons.forEach(btn => btn.disabled = true);
+
+                ws.send(JSON.stringify({ action: action }));
+                log(`🎯 你出了：${action}`);
+            }
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.textContent += message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+    </script>
+
+</body>
+</html>
