@@ -1,7 +1,8 @@
 const WebSocket = require('ws');
 const { handleRound, Player } = require('./gameLogic'); // 引入游戏逻辑
 
-const wss = new WebSocket.Server({ port: 8080 });
+const port = process.env.PORT || 8080;
+wss = new WebSocket.Server({ port });
 
 let players = [];
 
